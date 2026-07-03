@@ -103,15 +103,15 @@ final class RestBitbucketApiTest extends TestCase
             [
                 [
                     'uuid' => '74fb57b9-0820-4165-bba0-892eef8f69b8',
-                    'full_name' => 'repman/right-pad',
-                    'links' => ['html' => ['href' => 'https://vcs.example.test/repman/right-pad']],
+                    'full_name' => 'buddy/right-pad',
+                    'links' => ['html' => ['href' => 'https://vcs.example.test/buddy/right-pad']],
                 ],
             ]
         );
 
         self::assertEquals(new Repositories([
             new Repository('099acebd-5158-459e-b05c-30e51b49a1a8', 'repman/left-pad', 'https://vcs.example.test/repman/left-pad.git'),
-            new Repository('74fb57b9-0820-4165-bba0-892eef8f69b8', 'repman/right-pad', 'https://vcs.example.test/repman/right-pad.git'),
+            new Repository('74fb57b9-0820-4165-bba0-892eef8f69b8', 'buddy/right-pad', 'https://vcs.example.test/buddy/right-pad.git'),
         ]), $this->api->repositories('token'));
     }
 
