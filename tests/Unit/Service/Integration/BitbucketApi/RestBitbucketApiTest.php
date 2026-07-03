@@ -31,7 +31,7 @@ final class RestBitbucketApiTest extends TestCase
     protected function setUp(): void
     {
         $this->clientMock = $this->createMock(Client::class);
-        $this->clientMock->expects(self::once())->method('authenticate');
+        $this->clientMock->expects(self::once())->method("authenticate");
         $this->pagerMock = $this->createMock(ResultPagerInterface::class);
 
         $this->api = new RestBitbucketApi($this->clientMock, $this->pagerMock);
@@ -40,62 +40,75 @@ final class RestBitbucketApiTest extends TestCase
     public function testReturnPrimaryEmail(): void
     {
         $currentUser = $this->createMock(CurrentUser::class);
-        $currentUser->method('listEmails')->willReturn([
-          'pagelen' => 10,
-          'values' => [
-            [
-                'is_primary' => false,
-                'is_confirmed' => false,
-                'type' => 'email',
-                'email' => 'admin.of@the.world',
-                'links' => [],
+        $currentUser->method("listEmails")->willReturn([
+            "pagelen" => 10,
+            "values" => [
+                [
+                    "is_primary" => false,
+                    "is_confirmed" => false,
+                    "type" => "email",
+                    "email" => "admin.of@the.world",
+                    "links" => [],
+                ],
+                [
+                    "is_primary" => true,
+                    "is_confirmed" => true,
+                    "type" => "email",
+                    "email" => "test@buddy.works",
+                    "links" => [],
+                ],
             ],
-            [
-                'is_primary' => true,
-                'is_confirmed' => true,
-                'type' => 'email',
-                'email' => 'test@buddy.works',
-                'links' => [],
-            ],
-          ],
-          'page' => 1,
-          'size' => 2,
+            "page" => 1,
+            "size" => 2,
         ]);
-        $this->clientMock->method('currentUser')->willReturn($currentUser);
+        $this->clientMock->method("currentUser")->willReturn($currentUser);
 
-        self::assertEquals('test@buddy.works', $this->api->primaryEmail('token'));
+        self::assertEquals("test@buddy.works", $this->api->primaryEmail("token"));
     }
 
     public function testThrowExceptionWhenPrimaryEmailNotFound(): void
     {
         $currentUser = $this->createMock(CurrentUser::class);
-        $currentUser->method('listEmails')->willReturn([]);
-        $this->clientMock->method('currentUser')->willReturn($currentUser);
+        $currentUser->method("listEmails")->willReturn([]);
+        $this->clientMock->method("currentUser")->willReturn($currentUser);
 
         $this->expectException(\RuntimeException::class);
-        $this->api->primaryEmail('token');
+        $this->api->primaryEmail("token");
     }
 
     public function testFetchRepositories(): void
     {
-        $this->pagerMock->method('fetchAll')->willReturn([
-            [
-                'uuid' => '099acebd-5158-459e-b05c-30e51b49a1a8',
-                'full_name' => 'repman/left-pad',
-                'links' => ['html' => ['href' => 'https://gitlab.com/repman/left-pad']],
-            ],
-            [
-                'uuid' => '74fb57b9-0820-4165-bba0-892eef8f69b8',
-                'full_name' => 'repman/right-pad',
-                'links' => ['html' => ['href' => 'https://gitlab.com/repman/right-pad']],
-            ],
-        ]);
-        $this->clientMock->method('repositories')->willReturn($this->createMock(RepositoriesApi::class));
+        $currentUser = $this->createMock(CurrentUser::class);
+        $repos = $this->createMock(RepositoriesApi::class);
+        $workspaceOne = $this->createMock(RepositoriesApi\Workspaces::class);
+        $workspaceTwo = $this->createMock(RepositoriesApi\Workspaces::class);
+        $this->clientMock->method("currentUser")->willReturn($currentUser);
+        $this->clientMock->method("repositories")->willReturn($repos);
+        $repos->method("workspaces")->willReturnMap([["repman", $workspaceOne], ["buddy", $workspaceTwo]]);
 
-        self::assertEquals(new Repositories([
-            new Repository('099acebd-5158-459e-b05c-30e51b49a1a8', 'repman/left-pad', 'https://gitlab.com/repman/left-pad.git'),
-            new Repository('74fb57b9-0820-4165-bba0-892eef8f69b8', 'repman/right-pad', 'https://gitlab.com/repman/right-pad.git'),
-        ]), $this->api->repositories('token'));
+        $this->pagerMock->method("fetchAll")->willReturnOnConsecutiveCalls(
+            [["workspace" => ["slug" => "repman"]], ["workspace" => ["slug" => "buddy"]]],
+            [
+                "uuid" => "099acebd-5158-459e-b05c-30e51b49a1a8",
+                "full_name" => "repman/left-pad",
+                "links" => ["html" => ["href" => "https://vcs.example.test/repman/left-pad"]],
+            ],
+            [
+                [
+                    "uuid" => "74fb57b9-0820-4165-bba0-892eef8f69b8",
+                    "full_name" => "buddy/right-pad",
+                    "links" => ["html" => ["href" => "https://vcs.example.test/buddy/right-pad"]],
+                ],
+            ],
+        );
+
+        self::assertEquals(
+            new Repositories([
+                new Repository("099acebd-5158-459e-b05c-30e51b49a1a8", "repman/left-pad", "https://gitlab.com/repman/left-pad.git"),
+                new Repository("74fb57b9-0820-4165-bba0-892eef8f69b8", "repman/right-pad", "https://gitlab.com/repman/right-pad.git"),
+            ]),
+            $this->api->repositories("token"),
+        );
     }
 
     public function testAddHookWhenNotExist(): void
@@ -103,16 +116,16 @@ final class RestBitbucketApiTest extends TestCase
         $repos = $this->createMock(RepositoriesApi::class);
         $workspaces = $this->createMock(RepositoriesApi\Workspaces::class);
         $hooks = $this->createMock(RepositoriesApi\Workspaces\Hooks::class);
-        $this->pagerMock->method('fetchAll')->willReturn([
-            ['url' => 'https://bitbucket-pipelines.prod.public.atl-paas.net/rest/bitbucket/event/connect/onpush'],
-        ]);
-        $this->clientMock->method('repositories')->willReturn($repos);
-        $repos->method('workspaces')->willReturn($workspaces);
-        $workspaces->method('hooks')->willReturn($hooks);
+        $this->pagerMock
+            ->method("fetchAll")
+            ->willReturn([["url" => "https://bitbucket-pipelines.prod.public.atl-paas.net/rest/bitbucket/event/connect/onpush"]]);
+        $this->clientMock->method("repositories")->willReturn($repos);
+        $repos->method("workspaces")->willReturn($workspaces);
+        $workspaces->method("hooks")->willReturn($hooks);
 
-        $hooks->expects(self::once())->method('create');
+        $hooks->expects(self::once())->method("create");
 
-        $this->api->addHook('token', 'repman/left-pad', 'https://webhook.url');
+        $this->api->addHook("token", "repman/left-pad", "https://webhook.url");
     }
 
     public function testDoNotAddHookWhenExist(): void
@@ -120,17 +133,19 @@ final class RestBitbucketApiTest extends TestCase
         $repos = $this->createMock(RepositoriesApi::class);
         $workspaces = $this->createMock(RepositoriesApi\Workspaces::class);
         $hooks = $this->createMock(RepositoriesApi\Workspaces\Hooks::class);
-        $this->pagerMock->method('fetchAll')->willReturn([
-            ['url' => 'https://bitbucket-pipelines.prod.public.atl-paas.net/rest/bitbucket/event/connect/onpush'],
-            ['url' => 'https://webhook.url'],
-        ]);
-        $this->clientMock->method('repositories')->willReturn($repos);
-        $repos->method('workspaces')->willReturn($workspaces);
-        $workspaces->method('hooks')->willReturn($hooks);
+        $this->pagerMock
+            ->method("fetchAll")
+            ->willReturn([
+                ["url" => "https://bitbucket-pipelines.prod.public.atl-paas.net/rest/bitbucket/event/connect/onpush"],
+                ["url" => "https://webhook.url"],
+            ]);
+        $this->clientMock->method("repositories")->willReturn($repos);
+        $repos->method("workspaces")->willReturn($workspaces);
+        $workspaces->method("hooks")->willReturn($hooks);
 
-        $hooks->expects(self::never())->method('create');
+        $hooks->expects(self::never())->method("create");
 
-        $this->api->addHook('token', 'repman/left-pad', 'https://webhook.url');
+        $this->api->addHook("token", "repman/left-pad", "https://webhook.url");
     }
 
     public function testRemoveHookWhenExist(): void
@@ -138,19 +153,19 @@ final class RestBitbucketApiTest extends TestCase
         $repos = $this->createMock(RepositoriesApi::class);
         $workspaces = $this->createMock(RepositoriesApi\Workspaces::class);
         $hooks = $this->createMock(RepositoriesApi\Workspaces\Hooks::class);
-        $this->pagerMock->method('fetchAll')->willReturn([
+        $this->pagerMock->method("fetchAll")->willReturn([
             [
-                'uuid' => '1d2c6ec8-1294-4471-b703-1d050f86bdd5',
-                'url' => 'https://webhook.url',
+                "uuid" => "1d2c6ec8-1294-4471-b703-1d050f86bdd5",
+                "url" => "https://webhook.url",
             ],
         ]);
-        $this->clientMock->method('repositories')->willReturn($repos);
-        $repos->method('workspaces')->willReturn($workspaces);
-        $workspaces->method('hooks')->willReturn($hooks);
+        $this->clientMock->method("repositories")->willReturn($repos);
+        $repos->method("workspaces")->willReturn($workspaces);
+        $workspaces->method("hooks")->willReturn($hooks);
 
-        $hooks->expects(self::once())->method('remove')->with('1d2c6ec8-1294-4471-b703-1d050f86bdd5');
+        $hooks->expects(self::once())->method("remove")->with("1d2c6ec8-1294-4471-b703-1d050f86bdd5");
 
-        $this->api->removeHook('token', 'repman/left-pad', 'https://webhook.url');
+        $this->api->removeHook("token", "repman/left-pad", "https://webhook.url");
     }
 
     public function testRemoveHookWhenNotExist(): void
@@ -158,18 +173,18 @@ final class RestBitbucketApiTest extends TestCase
         $repos = $this->createMock(RepositoriesApi::class);
         $workspaces = $this->createMock(RepositoriesApi\Workspaces::class);
         $hooks = $this->createMock(RepositoriesApi\Workspaces\Hooks::class);
-        $this->pagerMock->method('fetchAll')->willReturn([
+        $this->pagerMock->method("fetchAll")->willReturn([
             [
-                'uuid' => '1d2c6ec8-1294-4471-b703-1d050f86bdd5',
-                'url' => 'https://other.url',
+                "uuid" => "1d2c6ec8-1294-4471-b703-1d050f86bdd5",
+                "url" => "https://other.url",
             ],
         ]);
-        $this->clientMock->method('repositories')->willReturn($repos);
-        $repos->method('workspaces')->willReturn($workspaces);
-        $workspaces->method('hooks')->willReturn($hooks);
+        $this->clientMock->method("repositories")->willReturn($repos);
+        $repos->method("workspaces")->willReturn($workspaces);
+        $workspaces->method("hooks")->willReturn($hooks);
 
-        $hooks->expects(self::never())->method('remove');
+        $hooks->expects(self::never())->method("remove");
 
-        $this->api->removeHook('token', 'repman/left-pad', 'https://webhook.url');
+        $this->api->removeHook("token", "repman/left-pad", "https://webhook.url");
     }
 }
