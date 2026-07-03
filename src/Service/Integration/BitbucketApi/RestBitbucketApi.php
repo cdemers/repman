@@ -42,11 +42,13 @@ final class RestBitbucketApi implements BitbucketApi
                 continue;
             }
 
-            $repositories = array_merge($repositories, $this->pager->fetchAll(
+            foreach ($this->pager->fetchAll(
                 $this->client->repositories()->workspaces($workspace),
                 'list',
                 [['role' => 'member']]
-            ));
+            ) as $repository) {
+                $repositories[] = $repository;
+            }
         }
 
         return new Repositories(array_map(function (array $repo): Repository {
